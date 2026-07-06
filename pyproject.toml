@@ -1,0 +1,25 @@
+[project]
+name = "whisperflow"
+version = "0.1.0"
+description = "Local Wispr Flow clone: system-wide hold-to-talk dictation for macOS"
+requires-python = ">=3.12"
+dependencies = [
+    "mlx-whisper>=0.4",
+    "sounddevice>=0.5",
+    "numpy",
+    "rumps>=0.4",
+    "pynput>=1.7",
+    "pyobjc-framework-Cocoa>=10",
+    "pyobjc-framework-Quartz>=10",
+    "requests>=2.31",
+]
+
+[project.scripts]
+whisperflow = "whisperflow.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/whisperflow"]
