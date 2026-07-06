@@ -1,4 +1,4 @@
-# whisper-flow-clone
+# undertone
 
 A local, free Wispr Flow clone for macOS. Hold a hotkey anywhere, speak, release — your words are transcribed on-device with Whisper, optionally polished by a local LLM (Ollama), and typed into whatever app has focus. No cloud, no subscription, nothing leaves your machine.
 
@@ -13,7 +13,7 @@ A local, free Wispr Flow clone for macOS. Hold a hotkey anywhere, speak, release
 
 ```bash
 uv sync
-uv run whisperflow
+uv run undertone
 ```
 
 First run downloads the Whisper model (~1.6 GB) and will prompt for **Microphone**, **Accessibility**, and **Input Monitoring** permissions in System Settings.

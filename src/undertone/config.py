@@ -1,15 +1,15 @@
-"""User config: TOML file at ~/.config/whisperflow/config.toml, created on first run."""
+"""User config: TOML file at ~/.config/undertone/config.toml, created on first run."""
 
 import tomllib
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-CONFIG_DIR = Path.home() / ".config" / "whisperflow"
+CONFIG_DIR = Path.home() / ".config" / "undertone"
 CONFIG_PATH = CONFIG_DIR / "config.toml"
-LOG_PATH = CONFIG_DIR / "whisperflow.log"
+LOG_PATH = CONFIG_DIR / "undertone.log"
 
 DEFAULT_CONFIG_TOML = """\
-# whisperflow configuration
+# undertone configuration
 
 # Key to hold while speaking. One of:
 # right_option, left_option, right_command, right_ctrl, f13

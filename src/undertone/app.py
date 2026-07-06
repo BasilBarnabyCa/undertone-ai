@@ -23,7 +23,7 @@ ICON_WORKING = "⏳"
 ICON_LOADING = "⌛"
 
 PERMISSIONS_NOTE = """\
-whisperflow needs three permissions (System Settings → Privacy & Security):
+undertone needs three permissions (System Settings → Privacy & Security):
   • Microphone         — to hear you
   • Input Monitoring   — to see the hold-to-talk key anywhere
   • Accessibility      — to paste the transcript into other apps
