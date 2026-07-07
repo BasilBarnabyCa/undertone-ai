@@ -10,6 +10,23 @@ log = logging.getLogger(__name__)
 
 SAMPLE_RATE = 16_000
 
+# Whisper's well-known outputs on silence/noise-only audio. A transcript that
+# is exactly one of these almost certainly wasn't speech.
+HALLUCINATIONS = {
+    "thank you",
+    "thanks",
+    "thank you for watching",
+    "thanks for watching",
+    "you",
+    "bye",
+    "please subscribe",
+    "please subscribe to my channel",
+}
+
+
+def looks_hallucinated(text: str) -> bool:
+    return text.lower().strip(" .,!?") in HALLUCINATIONS
+
 
 class Transcriber:
     def __init__(self, model: str, language: str = "en") -> None:
@@ -30,6 +47,9 @@ class Transcriber:
             audio, path_or_hf_repo=self.model, language=self.language
         )
         text = result["text"].strip()
+        if looks_hallucinated(text):
+            log.info("dropping likely hallucination: %r", text)
+            text = ""
         log.info(
             "transcribed %.1fs of audio in %.2fs: %r",
             len(audio) / SAMPLE_RATE,

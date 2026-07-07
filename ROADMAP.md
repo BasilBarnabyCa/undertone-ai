@@ -23,7 +23,8 @@ Wispr Flow's retention features: output quality beyond generic cleanup.
 
 ## v0.4 — Ergonomics & trust
 
-- [ ] **Toggle mode** — tap-to-start / tap-to-stop as a config alternative to hold (long dictations shouldn't require a held finger).
+- [ ] **Hands-free mode** — double-tap the hotkey to lock recording, tap again to stop (Wispr Flow's gesture; long dictations shouldn't require a held finger).
+- [ ] **Chord hotkey option** — support e.g. Ctrl+Opt as the trigger; a two-key chord nearly eliminates accidental fires (Wispr Flow's fallback default).
 - [ ] **Dictation history** — menu bar submenu with the last ~10 transcripts, click to re-copy. Local only, cap length, `history_enabled` config flag for the privacy-minded.
 - [ ] **Raw-vs-cleaned escape hatch** — after a paste, a "Undo cleanup" menu action that re-pastes the raw Whisper text (for when the LLM mangles something).
 - [ ] **Secure-input awareness** — detect password fields / secure input mode and refuse to paste (`IsSecureEventInputEnabled`), with a notification explaining why.

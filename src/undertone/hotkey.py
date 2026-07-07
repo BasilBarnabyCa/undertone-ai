@@ -17,16 +17,26 @@ KEYMAP = {
 
 
 class HoldHotkey:
-    """Calls on_start when the key goes down, on_stop when it comes back up."""
+    """Calls on_start when the key goes down, on_stop when it comes back up.
+
+    Any *other* key pressed while the hotkey is held means the user was typing
+    a keyboard shortcut (or hit Esc to abort) — on_cancel fires and the
+    eventual release is ignored.
+    """
 
     def __init__(
-        self, key_name: str, on_start: Callable[[], None], on_stop: Callable[[], None]
+        self,
+        key_name: str,
+        on_start: Callable[[], None],
+        on_stop: Callable[[], None],
+        on_cancel: Callable[[], None],
     ) -> None:
         if key_name not in KEYMAP:
             log.warning("unknown hotkey %r, falling back to right_option", key_name)
         self.key = KEYMAP.get(key_name, keyboard.Key.alt_r)
         self.on_start = on_start
         self.on_stop = on_stop
+        self.on_cancel = on_cancel
         self._held = False
         self._listener: keyboard.Listener | None = None
 
@@ -37,9 +47,14 @@ class HoldHotkey:
         self._listener.start()
 
     def _on_press(self, key) -> None:
-        if key == self.key and not self._held:
-            self._held = True
-            self.on_start()
+        if key == self.key:
+            if not self._held:
+                self._held = True
+                self.on_start()
+        elif self._held:
+            log.info("other key pressed while holding hotkey — cancelling")
+            self._held = False
+            self.on_cancel()
 
     def _on_release(self, key) -> None:
         if key == self.key and self._held:

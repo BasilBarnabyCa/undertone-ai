@@ -31,7 +31,7 @@ Grant them to your terminal app (it hosts this process), then relaunch.
 """
 
 
-class WhisperFlowApp(rumps.App):
+class UndertoneApp(rumps.App):
     def __init__(self) -> None:
         super().__init__(ICON_LOADING, quit_button="Quit")
         self.cfg = config.load()
@@ -48,7 +48,9 @@ class WhisperFlowApp(rumps.App):
             None,
         ]
 
-        self.hotkey = HoldHotkey(self.cfg.hotkey, self._on_key_down, self._on_key_up)
+        self.hotkey = HoldHotkey(
+            self.cfg.hotkey, self._on_key_down, self._on_key_up, self._on_key_cancel
+        )
         threading.Thread(target=self._warm_up, daemon=True).start()
 
     # -- startup ------------------------------------------------------------
@@ -78,6 +80,10 @@ class WhisperFlowApp(rumps.App):
         if not self.recorder.recording:
             return
         threading.Thread(target=self._process, daemon=True).start()
+
+    def _on_key_cancel(self) -> None:
+        self.recorder.cancel()
+        self.title = ICON_IDLE
 
     # -- pipeline (worker thread) --------------------------------------------
 
@@ -119,7 +125,7 @@ def main() -> None:
         handlers=[logging.FileHandler(config.LOG_PATH), logging.StreamHandler()],
     )
     print(PERMISSIONS_NOTE)
-    WhisperFlowApp().run()
+    UndertoneApp().run()
 
 
 if __name__ == "__main__":
