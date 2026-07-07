@@ -65,6 +65,15 @@ class UndertoneApp(rumps.App):
         if self.cfg.cleanup_enabled:
             cleanup.warm_up(self.cfg.ollama_model, self.cfg.ollama_url)
         self.hotkey.start()
+        if not injector.is_trusted():
+            log.error(
+                "ACCESSIBILITY NOT GRANTED — dictation will transcribe but cannot "
+                "paste (transcripts will be left on the clipboard instead). Fix: "
+                "System Settings → Privacy & Security → Accessibility → enable "
+                "your terminal app, then fully quit the terminal and relaunch."
+            )
+            self.title = "⚠️"
+            return
         self.title = ICON_IDLE
         log.info("ready — hold %s to dictate", self.cfg.hotkey)
 
