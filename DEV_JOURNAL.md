@@ -2,6 +2,29 @@
 
 > One entry per session, newest first. The top entry's "Next steps" is the handoff.
 
+## 2026-07-07 (later) — v0.2 starts: recording HUD, Liquid Glass, menu bar mark
+
+Cleanup answering-bug fixed earlier this session; then moved into v0.2 visual polish and brand.
+
+### Done
+
+1. **Recording HUD** (`hud.py`): a floating, non-activating `NSPanel` pill shown while the hotkey is held so you can see it's listening. Undertone's mark — a bell-curved cluster of 5 pill bars (mint `#8CFFEC` → electric cyan `#22E8FF` → deep blue `#00B4FF`, symmetric) — animates as a soundwave via staggered vertical scaling. Faint close-in glow per bar. Thread-safe: `show()`/`hide()` marshal to the main thread (`AppHelper.callAfter`).
+2. **Liquid Glass** (`hud.py`): the pill is a real `NSGlassEffectView` (macOS 26 Tahoe), dark-tinted to keep the near-black brand while gaining real refraction/specular edges. Falls back to a near-black layer pill on < macOS 26.
+3. **Menu bar mark** (`icons.py`): the same soundwave rendered as a crisp 40px (retina) colored PNG, two variants — `active` (running) and `muted` (warming up / busy) — written to `~/.config/undertone/`. `app.py` swaps the mark by state and shows ⚠️ text only on warm-up failure. Replaced the old emoji state machine (🎤/🔴/⏳/⌛).
+
+### Known issues / observations
+
+- **Real logo never received** — the attachment kept arriving as the generic macOS "PNG file" placeholder, so the mark is drawn from Basil's written brand spec, not his file. Swap in the real asset when available (tune bar proportions).
+- **Colored (non-template) menu bar icon** — stays cyan-blue in light and dark menu bars rather than adapting to monochrome. Intentional for a brand mark; revisit if it reads busy on a light bar.
+- HUD glass only shows its refraction against live desktop content; preview via `scratchpad/hud_preview.py`.
+
+### Next steps, in order
+
+1. **Basil to eyeball** the HUD glass pill and menu bar mark; tweak tint/brightness/size as desired.
+2. **Finish v1 acceptance checks** (voice-dependent): browser text field, cleanup on/off comparison, ≤2s latency feel.
+3. **Continue v0.2** (ROADMAP.md): perceived-latency cut (stream audio into Whisper while held), sound cues, launch-at-login LaunchAgent.
+4. **Rename the project folder** (outside a session): `mv ~/dev/ai/whisper-flow-clone ~/dev/ai/undertone`.
+
 ## 2026-07-07 — v1 pipeline built, named, safeguarded, and working end-to-end
 
 **The app works.** Hold right Option anywhere → speak → release → transcript is cleaned by Ollama and pasted into the focused app. Verified live in Terminal and Notes.
