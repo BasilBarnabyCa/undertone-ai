@@ -35,6 +35,7 @@ Holding Right Option anywhere on macOS records speech and, on release, types an 
 - Confirming Right Option as the hotkey feels right in daily use (easy to change in config).
 
 ## Out of scope (explicit non-goals)
+See ROADMAP.md for the post-v1 feature plan (streaming, personal dictionary, tone matching, packaging).
 - Windows/Linux support
 - Real-time streaming transcription (word-by-word as you speak) — v1 is record-then-transcribe
 - Custom vocabulary / speaker adaptation, multi-language auto-detect UI
