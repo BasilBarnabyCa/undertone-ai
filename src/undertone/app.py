@@ -10,17 +10,15 @@ import threading
 
 import rumps
 
-from . import cleanup, config, injector
+from . import cleanup, config, icons, injector
 from .hotkey import HoldHotkey
+from .hud import RecordingHUD
 from .recorder import Recorder
 from .transcriber import Transcriber
 
 log = logging.getLogger(__name__)
 
-ICON_IDLE = "🎤"
-ICON_RECORDING = "🔴"
-ICON_WORKING = "⏳"
-ICON_LOADING = "⌛"
+WARN_GLYPH = "⚠️"  # shown as text when warm-up fails (no usable icon state)
 
 PERMISSIONS_NOTE = """\
 undertone needs three permissions (System Settings → Privacy & Security):
@@ -33,10 +31,15 @@ Grant them to your terminal app (it hosts this process), then relaunch.
 
 class UndertoneApp(rumps.App):
     def __init__(self) -> None:
-        super().__init__(ICON_LOADING, quit_button="Quit")
+        # The mark is the menu bar icon: full-colour while running, dimmed while
+        # warming up or busy. Start dimmed until warm-up finishes.
+        active, muted = icons.ensure_icons()
+        super().__init__("Undertone", icon=muted, template=False, quit_button="Quit")
+        self._icon_active, self._icon_muted = active, muted
         self.cfg = config.load()
         self.recorder = Recorder()
         self.transcriber = Transcriber(self.cfg.whisper_model, self.cfg.language)
+        self.hud = RecordingHUD()
         self._busy = threading.Lock()
 
         self.cleanup_item = rumps.MenuItem("LLM cleanup (Ollama)", callback=self._toggle_cleanup)
@@ -53,6 +56,17 @@ class UndertoneApp(rumps.App):
         )
         threading.Thread(target=self._warm_up, daemon=True).start()
 
+    # -- menu bar state ------------------------------------------------------
+
+    def _show_mark(self, active: bool) -> None:
+        """Display the mark icon (dropping any warning glyph)."""
+        self.title = None
+        self.icon = self._icon_active if active else self._icon_muted
+
+    def _show_warning(self) -> None:
+        self.icon = None
+        self.title = WARN_GLYPH
+
     # -- startup ------------------------------------------------------------
 
     def _warm_up(self) -> None:
@@ -60,7 +74,7 @@ class UndertoneApp(rumps.App):
             self.transcriber.warm_up()
         except Exception:
             log.exception("whisper warm-up failed")
-            self.title = "⚠️"
+            self._show_warning()
             return
         if self.cfg.cleanup_enabled:
             cleanup.warm_up(self.cfg.ollama_model, self.cfg.ollama_url)
@@ -72,9 +86,9 @@ class UndertoneApp(rumps.App):
                 "System Settings → Privacy & Security → Accessibility → enable "
                 "your terminal app, then fully quit the terminal and relaunch."
             )
-            self.title = "⚠️"
+            self._show_warning()
             return
-        self.title = ICON_IDLE
+        self._show_mark(active=True)
         log.info("ready — hold %s to dictate", self.cfg.hotkey)
 
     # -- hotkey callbacks (listener thread) ----------------------------------
@@ -82,23 +96,26 @@ class UndertoneApp(rumps.App):
     def _on_key_down(self) -> None:
         if self._busy.locked():
             return
-        self.title = ICON_RECORDING
+        # The HUD is the live "listening" indicator; the menu bar mark stays lit.
+        self.hud.show()
         self.recorder.start()
 
     def _on_key_up(self) -> None:
         if not self.recorder.recording:
             return
+        self.hud.hide()
         threading.Thread(target=self._process, daemon=True).start()
 
     def _on_key_cancel(self) -> None:
+        self.hud.hide()
         self.recorder.cancel()
-        self.title = ICON_IDLE
+        self._show_mark(active=True)
 
     # -- pipeline (worker thread) --------------------------------------------
 
     def _process(self) -> None:
         with self._busy:
-            self.title = ICON_WORKING
+            self._show_mark(active=False)  # dimmed while transcribing/cleaning
             try:
                 audio = self.recorder.stop()
                 if audio is None:
@@ -117,7 +134,7 @@ class UndertoneApp(rumps.App):
             except Exception:
                 log.exception("dictation pipeline failed")
             finally:
-                self.title = ICON_IDLE
+                self._show_mark(active=True)
 
     # -- menu ----------------------------------------------------------------
 
