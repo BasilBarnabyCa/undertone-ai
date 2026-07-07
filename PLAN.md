@@ -25,10 +25,10 @@ Holding Right Option anywhere on macOS records speech and, on release, types an 
 - [ ] Hold-Right-Option → speak → release types the transcript into TextEdit at the cursor
 - [ ] Works in at least 3 different apps (native, browser, terminal)
 - [ ] Cleanup toggle changes output (fillers removed when on; raw when off)
-- [ ] Ollama down/killed → raw transcript still delivered (graceful fallback)
-- [ ] Clipboard contents survive a dictation round-trip
+- [x] Ollama down/killed → raw transcript still delivered (graceful fallback) — verified: dead-port `clean()` returns raw text
+- [x] Clipboard contents survive a dictation round-trip — verified by code: trusted paste restores prior clipboard in `finally`
 - [ ] A ~10-word sentence lands in ≤ ~2 s on the M4 Pro
-- [ ] Nothing is written outside the project dir and `~/.config/undertone/`
+- [x] Nothing is written outside the project dir and `~/.config/undertone/` — verified: all writes go to `CONFIG_DIR` / `LOG_PATH`
 
 ## Hard gates (decisions/credentials only the user can provide)
 - Granting Microphone, Accessibility, and Input Monitoring permissions in System Settings when prompted.
