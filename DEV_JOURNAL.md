@@ -2,6 +2,21 @@
 
 > One entry per session, newest first. The top entry's "Next steps" is the handoff.
 
+## 2026-07-07 (latest) — streaming latency cut: built, measured, reverted
+
+Attempted the roadmap's headline v0.2 item (stream audio into Whisper in rolling chunks so release→paste feels instant). Built it fully — `streaming.py` with silence-aligned phrase finalization + `initial_prompt` context threading, recorder `snapshot()`, config flag, 8 tests. Then measured it end-to-end and **reverted the whole thing.**
+
+**Why reverted (the load-bearing finding):** Whisper pads every input to a 30 s window, so inference time is ~constant (~0.48 s on the M4 Pro) whether the clip is 1.9 s or 5.2 s. Chunked streaming saves ~0 release latency, does more total inference, and *hurts* accuracy — a phrase transcribed without the rest of the sentence lost context ("send John" → "sent John"), and `initial_prompt` didn't fix it. Net: strictly worse. Full analysis in ROADMAP.md (item now marked done/rejected).
+
+**Takeaway:** end-to-end latency is already ~1 s (0.5 s transcribe + ~0.43 s cleanup), under the ≤2 s target; the HUD makes it *feel* instant. Don't re-attempt chunked Whisper. Real latency levers if ever needed: parallelize/shrink the cleanup pass, or a streaming-native engine (Parakeet, v1.0).
+
+### Next steps, in order
+
+1. **Continue v0.2**: sound cues (start/stop ticks, off by default) or launch-at-login (LaunchAgent + install/uninstall commands) — both small, self-contained, no voice needed.
+2. **Finish v1 acceptance checks** (voice-dependent): browser text field, cleanup on/off comparison, ≤2 s latency feel.
+3. **Basil to eyeball** the HUD glass pill and menu bar mark; tweak tint/brightness/size as desired.
+4. **Rename the project folder** (outside a session): `mv ~/dev/ai/whisper-flow-clone ~/dev/ai/undertone`.
+
 ## 2026-07-07 (later) — v0.2 starts: recording HUD, Liquid Glass, menu bar mark
 
 Cleanup answering-bug fixed earlier this session; then moved into v0.2 visual polish and brand.

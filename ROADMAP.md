@@ -7,7 +7,7 @@
 
 The two things you notice most in the real product: text appears almost instantly, and you can see it's listening.
 
-- [ ] **Perceived-latency cut** — start streaming audio into Whisper in rolling chunks *while* the key is held, so release→paste drops from ~1–2 s to near-instant. Fallback if chunking hurts accuracy: transcribe-on-release but begin model inference during the final 0.5 s of held audio.
+- [x] ~~**Perceived-latency cut** — stream audio into Whisper in rolling chunks while the key is held.~~ **Investigated and rejected (2026-07-07).** Whisper always pads its input to a 30 s window, so inference is a constant ~0.48 s on the M4 Pro regardless of clip length (measured: 1.9 s, 2.5 s, and 5.2 s clips all ~0.48 s). Chunked streaming therefore saves no release latency, does *more* total inference, and hurts accuracy (a phrase transcribed in isolation lost sentence context: "send" → "sent"; `initial_prompt` didn't recover it). End-to-end latency is already ~1 s (0.5 s transcribe + ~0.43 s cleanup), under the v1 ≤2 s target; the HUD is what makes it *feel* instant. Real latency levers if ever needed: parallelize/shrink the cleanup pass, or adopt a streaming-native engine (see Parakeet in v1.0).
 - [ ] **Recording HUD** — small floating pill (waveform or pulsing dot) while the key is held, so you're never guessing whether it heard you. `NSPanel` non-activating overlay; menu bar icon alone is too easy to miss.
 - [ ] **Sound cues** — subtle start/stop ticks (system sounds, off by default in config).
 - [ ] **Launch at login** — LaunchAgent plist, `undertone install-agent` / `uninstall-agent` commands.
