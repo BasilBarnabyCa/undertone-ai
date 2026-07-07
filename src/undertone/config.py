@@ -28,6 +28,13 @@ ollama_model = "llama3.2:3b"
 ollama_url = "http://localhost:11434"
 # Seconds to wait for cleanup before falling back to the raw transcript.
 cleanup_timeout = 6.0
+
+# Subtle start/stop ticks (off by default; also toggleable from the menu bar).
+# Names come from /System/Library/Sounds (without the .aiff). Volume is 0.0-1.0.
+sounds_enabled = false
+sound_start = "Glass"
+sound_stop = "Pop"
+sound_volume = 0.5
 """
 
 
@@ -40,6 +47,10 @@ class Config:
     ollama_model: str = "llama3.2:3b"
     ollama_url: str = "http://localhost:11434"
     cleanup_timeout: float = 6.0
+    sounds_enabled: bool = False
+    sound_start: str = "Glass"
+    sound_stop: str = "Pop"
+    sound_volume: float = 0.5
 
 
 def load() -> Config:

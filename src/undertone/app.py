@@ -14,6 +14,7 @@ from . import cleanup, config, icons, injector
 from .hotkey import HoldHotkey
 from .hud import RecordingHUD
 from .recorder import Recorder
+from .sounds import SoundCues
 from .transcriber import Transcriber
 
 log = logging.getLogger(__name__)
@@ -40,12 +41,21 @@ class UndertoneApp(rumps.App):
         self.recorder = Recorder()
         self.transcriber = Transcriber(self.cfg.whisper_model, self.cfg.language)
         self.hud = RecordingHUD()
+        self.sounds = SoundCues(
+            self.cfg.sound_start,
+            self.cfg.sound_stop,
+            self.cfg.sound_volume,
+            self.cfg.sounds_enabled,
+        )
         self._busy = threading.Lock()
 
         self.cleanup_item = rumps.MenuItem("LLM cleanup (Ollama)", callback=self._toggle_cleanup)
         self.cleanup_item.state = self.cfg.cleanup_enabled
+        self.sounds_item = rumps.MenuItem("Sound cues", callback=self._toggle_sounds)
+        self.sounds_item.state = self.cfg.sounds_enabled
         self.menu = [
             self.cleanup_item,
+            self.sounds_item,
             rumps.MenuItem(f"Hotkey: hold {self.cfg.hotkey}", callback=None),
             rumps.MenuItem(f"Model: {self.cfg.whisper_model.split('/')[-1]}", callback=None),
             None,
@@ -98,12 +108,14 @@ class UndertoneApp(rumps.App):
             return
         # The HUD is the live "listening" indicator; the menu bar mark stays lit.
         self.hud.show()
+        self.sounds.start()
         self.recorder.start()
 
     def _on_key_up(self) -> None:
         if not self.recorder.recording:
             return
         self.hud.hide()
+        self.sounds.stop()
         threading.Thread(target=self._process, daemon=True).start()
 
     def _on_key_cancel(self) -> None:
@@ -141,6 +153,11 @@ class UndertoneApp(rumps.App):
     def _toggle_cleanup(self, item: rumps.MenuItem) -> None:
         item.state = not item.state
         log.info("LLM cleanup %s", "on" if item.state else "off")
+
+    def _toggle_sounds(self, item: rumps.MenuItem) -> None:
+        item.state = not item.state
+        self.sounds.enabled = bool(item.state)
+        log.info("sound cues %s", "on" if item.state else "off")
 
 
 def main() -> None:
