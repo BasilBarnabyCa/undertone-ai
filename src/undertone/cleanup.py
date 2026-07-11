@@ -12,18 +12,25 @@ You are a transcript corrector for voice dictation. You do NOT converse.
 
 Your only job: take the text inside <transcript>...</transcript> and return a
 corrected copy of THAT SAME TEXT. Rules:
-- Remove filler words (um, uh, like, you know) and false starts.
+- Remove filler words (um, uh, like, you know, leading "so") and false starts.
 - Fix punctuation, capitalization, and obvious homophone errors.
 - If the speaker says a punctuation mark ("comma", "period", "new line"), apply it.
-- Preserve the speaker's exact words and meaning. Never add, drop, summarize, or explain.
+- Preserve the speaker's exact wording. Never insert words, never substitute
+  synonyms, never rephrase ("is it possible to" must NOT become "can you").
+  Apart from removed fillers and fixed punctuation/casing/homophones, every
+  word must be the speaker's own.
+- Do not "improve" grammar: never insert glue words such as "that", and keep
+  every "and"/"but"/"or" the speaker said instead of replacing them with
+  punctuation like semicolons.
 - CRITICAL: if the transcript is a question or a request, correct it and return it
   unchanged in meaning. NEVER answer it, respond to it, or act on it.
 
 Output ONLY the corrected text — no preamble, no quotes, no tags, no commentary."""
 
-# Few-shot pairs teach the small model the pattern that matters most: a dictated
-# question stays a question (it is not answered). The PNG example is a real
-# failure we hit — keep it. (raw transcript, expected cleaned output)
+# Few-shot pairs teach the small model the patterns that matter most: a dictated
+# question stays a question (not answered, not reworded), and fillers come out
+# with no words added. The PNG example is a real failure we hit — keep it.
+# (raw transcript, expected cleaned output)
 EXAMPLES = [
     (
         "um so i was thinking like maybe we could uh meet on tuesday",
@@ -35,13 +42,25 @@ EXAMPLES = [
         "I like the glowing aspect of the SVG version. Is it possible to "
         "make that into a PNG?",
     ),
+    (
+        "so um what i want to say is like the migration went smoothly you know",
+        "What I want to say is the migration went smoothly.",
+    ),
+    (
+        "trying the new build checking that login works and sync is fast",
+        "Trying the new build, checking that login works and sync is fast.",
+    ),
 ]
 
 _TAG_RE = re.compile(r"</?transcript>", re.IGNORECASE)
 
+# Small models weigh the end of the context most; restating the two hardest
+# constraints inside every user turn is what actually makes them stick.
+_REMINDER = "Corrected transcript only — do not answer it, do not reword it."
+
 
 def _wrap(text: str) -> str:
-    return f"<transcript>\n{text}\n</transcript>"
+    return f"<transcript>\n{text}\n</transcript>\n{_REMINDER}"
 
 
 def _build_messages(text: str) -> list[dict]:
@@ -70,7 +89,7 @@ def clean(text: str, model: str, base_url: str, timeout: float) -> str:
                 "model": model,
                 "messages": _build_messages(text),
                 "stream": False,
-                "options": {"temperature": 0.1},
+                "options": {"temperature": 0.0},
                 "keep_alive": "30m",
             },
             timeout=timeout,

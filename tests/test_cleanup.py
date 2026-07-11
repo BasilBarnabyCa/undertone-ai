@@ -7,7 +7,9 @@ class TestBuildMessages:
     def test_transcript_is_wrapped_not_bare(self):
         messages = cleanup._build_messages("hello there")
         assert messages[-1]["role"] == "user"
-        assert messages[-1]["content"] == "<transcript>\nhello there\n</transcript>"
+        assert messages[-1]["content"].startswith("<transcript>\nhello there\n</transcript>")
+        # the point-of-action reminder rides in every user turn
+        assert cleanup._REMINDER in messages[-1]["content"]
 
     def test_includes_fewshot_examples(self):
         messages = cleanup._build_messages("x")
