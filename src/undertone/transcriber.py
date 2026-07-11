@@ -41,11 +41,15 @@ class Transcriber:
         )
         log.info("model %s warm in %.1fs", self.model, time.monotonic() - t0)
 
-    def transcribe(self, audio: np.ndarray) -> str:
+    def transcribe(self, audio: np.ndarray, initial_prompt: str | None = None) -> str:
         t0 = time.monotonic()
-        result = mlx_whisper.transcribe(
-            audio, path_or_hf_repo=self.model, language=self.language
-        )
+        kwargs = {"path_or_hf_repo": self.model, "language": self.language}
+        if initial_prompt:
+            # Threads the previous chunk's raw transcript in as context for
+            # long-hold chunking (long_session.py), so a chunk boundary that
+            # splits a sentence has some idea what came right before it.
+            kwargs["initial_prompt"] = initial_prompt
+        result = mlx_whisper.transcribe(audio, **kwargs)
         text = result["text"].strip()
         if looks_hallucinated(text):
             log.info("dropping likely hallucination: %r", text)

@@ -13,6 +13,7 @@ import rumps
 from . import cleanup, config, icons, injector
 from .hotkey import HoldHotkey
 from .hud import RecordingHUD
+from .long_session import LongSession
 from .recorder import Recorder
 from .sounds import SoundCues
 from .transcriber import Transcriber
@@ -48,6 +49,10 @@ class UndertoneApp(rumps.App):
             self.cfg.sounds_enabled,
         )
         self._busy = threading.Lock()
+        # Set once a hold crosses cfg.chunk_seconds (see _promote_to_long_session).
+        # None means "still a normal short hold" — the fast path is unaffected.
+        self._long_session: LongSession | None = None
+        self._chunk_timer: threading.Timer | None = None
 
         self.cleanup_item = rumps.MenuItem("LLM cleanup (Ollama)", callback=self._toggle_cleanup)
         self.cleanup_item.state = self.cfg.cleanup_enabled
@@ -109,19 +114,61 @@ class UndertoneApp(rumps.App):
         # The HUD is the live "listening" indicator; the menu bar mark stays lit.
         self.hud.show()
         self.sounds.start()
-        self.recorder.start()
+        try:
+            self.recorder.start()
+        except Exception:
+            # sd.InputStream can fail to open (e.g. the input device is mid
+            # renegotiation). If this isn't caught, recorder.recording stays
+            # False, so _on_key_up later no-ops and never hides the HUD —
+            # the app looks "stuck listening" while capturing nothing.
+            log.exception("failed to start recording")
+            self.hud.hide()
+            self.sounds.stop()
+            self._show_warning()
+            return
+        self._long_session = None
+        self._chunk_timer = threading.Timer(self.cfg.chunk_seconds, self._promote_to_long_session)
+        self._chunk_timer.daemon = True
+        self._chunk_timer.start()
+
+    def _promote_to_long_session(self) -> None:
+        # Fires on its own timer thread once a hold crosses chunk_seconds.
+        # Short dictation never reaches this — only genuinely long holds pay
+        # for chunked processing.
+        if not self.recorder.recording:
+            return
+        log.info("hold past %.0fs — switching to chunked long-session processing", self.cfg.chunk_seconds)
+        self._long_session = LongSession(
+            self.recorder,
+            self.transcriber,
+            chunk_seconds=self.cfg.chunk_seconds,
+            cleanup_enabled=self.cleanup_item.state,
+            ollama_model=self.cfg.ollama_model,
+            ollama_url=self.cfg.ollama_url,
+            cleanup_timeout=self.cfg.cleanup_timeout,
+        )
+        self._long_session.start()
 
     def _on_key_up(self) -> None:
         if not self.recorder.recording:
             return
+        if self._chunk_timer is not None:
+            self._chunk_timer.cancel()
         self.hud.hide()
         self.sounds.stop()
         threading.Thread(target=self._process, daemon=True).start()
 
     def _on_key_cancel(self) -> None:
+        if self._chunk_timer is not None:
+            self._chunk_timer.cancel()
         self.hud.hide()
         self.recorder.cancel()
         self._show_mark(active=True)
+        session, self._long_session = self._long_session, None
+        if session is not None:
+            # Abort in the background — a session mid-chunk can take a few
+            # seconds to unwind, and the hotkey listener thread must not block.
+            threading.Thread(target=session.stop, daemon=True).start()
 
     # -- pipeline (worker thread) --------------------------------------------
 
@@ -129,19 +176,37 @@ class UndertoneApp(rumps.App):
         with self._busy:
             self._show_mark(active=False)  # dimmed while transcribing/cleaning
             try:
-                audio = self.recorder.stop()
-                if audio is None:
-                    return
-                text = self.transcriber.transcribe(audio)
+                session, self._long_session = self._long_session, None
+                if session is not None:
+                    # Long hold: most of it was already transcribed+cleaned in
+                    # the background. Only the trailing partial slice is left,
+                    # so tail latency here is bounded to ~one chunk, not the
+                    # whole recording. close() is ungated (no clip_ok) — the
+                    # hold already proved itself real speech via earlier chunks.
+                    tail = self.recorder.close()
+                    text = session.finish(tail)
+                else:
+                    audio = self.recorder.stop()
+                    # Narrow race: the promotion timer could have fired in the
+                    # same instant as key-up (already running when cancel()
+                    # was called doesn't stop it). If so, a session exists
+                    # that nobody will ever finish() — stop it rather than
+                    # leak its background thread.
+                    late_session, self._long_session = self._long_session, None
+                    if late_session is not None:
+                        late_session.stop()
+                    if audio is None:
+                        return
+                    text = self.transcriber.transcribe(audio)
+                    if text and self.cleanup_item.state:
+                        text = cleanup.clean(
+                            text,
+                            self.cfg.ollama_model,
+                            self.cfg.ollama_url,
+                            self.cfg.cleanup_timeout,
+                        )
                 if not text:
                     return
-                if self.cleanup_item.state:
-                    text = cleanup.clean(
-                        text,
-                        self.cfg.ollama_model,
-                        self.cfg.ollama_url,
-                        self.cfg.cleanup_timeout,
-                    )
                 injector.paste_text(text)
             except Exception:
                 log.exception("dictation pipeline failed")

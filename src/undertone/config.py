@@ -29,6 +29,12 @@ ollama_url = "http://localhost:11434"
 # Seconds to wait for cleanup before falling back to the raw transcript.
 cleanup_timeout = 6.0
 
+# Long holds (a recorded conversation, a multi-minute monologue) are
+# transcribed+cleaned in slices this many seconds long while the hotkey is
+# still held, instead of paying for the whole thing only after release. Short
+# dictation never crosses this threshold and is unaffected.
+chunk_seconds = 30.0
+
 # Subtle start/stop ticks (off by default; also toggleable from the menu bar).
 # Names come from /System/Library/Sounds (without the .aiff). Volume is 0.0-1.0.
 sounds_enabled = false
@@ -47,6 +53,7 @@ class Config:
     ollama_model: str = "llama3.2:3b"
     ollama_url: str = "http://localhost:11434"
     cleanup_timeout: float = 6.0
+    chunk_seconds: float = 30.0
     sounds_enabled: bool = False
     sound_start: str = "Glass"
     sound_stop: str = "Pop"
