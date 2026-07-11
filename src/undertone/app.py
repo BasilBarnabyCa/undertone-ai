@@ -33,10 +33,11 @@ Grant them to your terminal app (it hosts this process), then relaunch.
 
 class UndertoneApp(rumps.App):
     def __init__(self) -> None:
-        # The mark is the menu bar icon: full-colour while running, dimmed while
-        # warming up or busy. Start dimmed until warm-up finishes.
+        # The mark is the menu bar icon: full opacity while running, dimmed while
+        # warming up or busy. Start dimmed until warm-up finishes. template=True
+        # lets macOS auto-recolor it for light/dark menu bars and selection.
         active, muted = icons.ensure_icons()
-        super().__init__("Undertone", icon=muted, template=False, quit_button="Quit")
+        super().__init__("Undertone", icon=muted, template=True, quit_button="Quit")
         self._icon_active, self._icon_muted = active, muted
         self.cfg = config.load()
         self.recorder = Recorder()

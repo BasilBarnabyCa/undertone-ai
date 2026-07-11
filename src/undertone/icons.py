@@ -1,40 +1,20 @@
 """Render Undertone's mark as a menu bar icon.
 
-The mark is the same bell-curved soundwave cluster the HUD uses, drawn as a
-small colored PNG (cyan-to-blue neon family) for the status bar. rumps sizes
-status icons to 20 pt, so we render at 40 px for retina crispness. Two variants:
-`active` (full color, app running) and `muted` (dimmed, warming up / busy).
-
-Menu bar icons are tiny, so we drop the HUD's glow — it doesn't read at 20 pt —
-and keep crisp fills only.
+The mark is Basil's monotone soundwave logo (assets/logo_monotone.png):
+transparent background, opaque dark fill. Rendered as a macOS *template*
+image so the menu bar recolors it automatically for light/dark mode and
+selection state — rumps sizes status icons to 20 pt, so we render at 40 px
+for retina crispness. Two variants: `active` (full opacity, app running)
+and `muted` (dimmed, warming up / busy).
 """
 
-import warnings
 from pathlib import Path
 
 import AppKit
-import objc
 
 from .config import CONFIG_DIR
 
-warnings.filterwarnings("ignore", category=objc.ObjCPointerWarning)
-
-_MINT = (0.549, 1.0, 0.925)   # #8CFFEC
-_CYAN = (0.133, 0.910, 1.0)   # #22E8FF
-_BLUE = (0.0, 0.706, 1.0)     # #00B4FF
-
-# (colour, resting height) per bar in a 20-unit grid — a bell curve.
-_BARS = [
-    (_MINT, 7.0),
-    (_CYAN, 12.0),
-    (_BLUE, 16.0),
-    (_CYAN, 12.0),
-    (_MINT, 7.0),
-]
-_BAR_W = 2.4
-_PITCH = 3.8
-_X0 = 1.2
-_GRID = 20.0
+_SOURCE_PATH = Path(__file__).with_name("assets") / "logo_monotone.png"
 _RENDER_PX = 40  # 2x of the 20 pt menu bar slot
 
 _ACTIVE_PATH = CONFIG_DIR / "menubar_active.png"
@@ -43,22 +23,15 @@ _MUTED_PATH = CONFIG_DIR / "menubar_muted.png"
 
 def _render(px: int, alpha: float) -> AppKit.NSImage:
     AppKit.NSApplication.sharedApplication()  # drawing context needs an app
+    source = AppKit.NSImage.alloc().initByReferencingFile_(str(_SOURCE_PATH))
     img = AppKit.NSImage.alloc().initWithSize_((px, px))
     img.lockFocus()
-    scale = px / _GRID
-    for i, (rgb, height) in enumerate(_BARS):
-        x = (_X0 + i * _PITCH) * scale
-        w = _BAR_W * scale
-        bar_h = height * scale
-        y = ((_GRID - height) / 2) * scale
-        rect = AppKit.NSMakeRect(x, y, w, bar_h)
-        path = AppKit.NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
-            rect, w / 2, w / 2
-        )
-        AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(
-            rgb[0], rgb[1], rgb[2], alpha
-        ).set()
-        path.fill()
+    source.drawInRect_fromRect_operation_fraction_(
+        AppKit.NSMakeRect(0, 0, px, px),
+        AppKit.NSZeroRect,
+        AppKit.NSCompositingOperationSourceOver,
+        alpha,
+    )
     img.unlockFocus()
     return img
 
